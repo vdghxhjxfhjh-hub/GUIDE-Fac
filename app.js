@@ -1,0 +1,18 @@
+const $=s=>document.querySelector(s);
+for(const el of document.querySelectorAll('[data-image]')){const c=window.SEON_IMAGES[el.dataset.image];if(!c)continue;el.style.aspectRatio=({landscape:'1216/832',portrait:'832/1216',square:'1'})[c.ratio]||'1216/832';el.setAttribute('role','img');el.setAttribute('aria-label',c.alt+' — 이미지 준비 중');if(c.src){const img=new Image();img.alt=c.alt;img.style.objectFit=c.fit==='cover'?'cover':'contain';img.onload=()=>{if(c.ratio==='auto')el.style.aspectRatio=img.naturalWidth+'/'+img.naturalHeight;el.replaceChildren(img);el.removeAttribute('role');el.removeAttribute('aria-label');};img.referrerPolicy='no-referrer';img.onerror=()=>img.remove();img.src=c.src;}}
+let filter='전체';const dialog=$('#document');
+function openDoc(r){$('#document-meta').textContent=r.id+' / '+r.type+' / '+r.date;$('#document-title').textContent=r.title;$('#document-content').replaceChildren(...r.body.map(([title,body])=>{const section=document.createElement('section'),h=document.createElement('h3'),p=document.createElement('p');h.textContent=title;p.textContent=body;if(r.id==='GD-084' && title==='접수 내용' && body.includes('IN-001')){const at=body.indexOf('IN-001'),token=document.createElement('span');token.id='instructor-clue';token.textContent='IN-001';p.replaceChildren(document.createTextNode(body.slice(0,at)),token,document.createTextNode(body.slice(at+6)));}section.append(h,p);return section;}));dialog.showModal();$('.doc-body').scrollTop=0;document.body.classList.add('modal-open');}
+function render(){const q=$('#search').value.trim().toLowerCase();const rows=window.SEON_RECORDS.filter(r=>(filter==='전체'||r.type===filter)&&(r.id+' '+r.title).toLowerCase().includes(q));$('#records-list').replaceChildren(...rows.map(r=>{const b=document.createElement('button');b.className='record';const meta=document.createElement('span'),id=document.createElement('b'),type=document.createElement('small'),title=document.createElement('strong'),date=document.createElement('time'),arrow=document.createElement('span');id.textContent=r.id;type.textContent=r.type;meta.append(id,type);title.textContent=r.title;date.textContent=r.date;arrow.textContent='↗';arrow.setAttribute('aria-hidden','true');b.append(meta,title,date,arrow);b.onclick=()=>openDoc(r);return b;}));$('#count').textContent='총 '+rows.length+'건';$('#empty').hidden=rows.length>0;}
+$('#search').addEventListener('input',render);document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));render();});$('#close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>document.body.classList.remove('modal-open'));dialog.addEventListener('click',e=>{const r=dialog.getBoundingClientRect();if(e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))dialog.close();});render();
+
+// GD-084의 해당 ID를 선택했을 때만 공개합니다. 다시 열면 원래 ID로 복원됩니다.
+document.addEventListener('selectionchange',()=>{
+  const token=document.getElementById('instructor-clue'),selection=window.getSelection();
+  if(!dialog.open || !token || token.textContent!=='IN-001' || !selection || selection.isCollapsed || !selection.rangeCount)return;
+  const selected=selection.getRangeAt(0),target=document.createRange();
+  target.setStart(token.firstChild,0);target.setEnd(token.firstChild,token.firstChild.length);
+  if(selected.compareBoundaryPoints(Range.START_TO_START,target)>0 || selected.compareBoundaryPoints(Range.END_TO_END,target)<0)return;
+  token.textContent='FIELD01';
+  const revealed=document.createRange();revealed.selectNodeContents(token);
+  selection.removeAllRanges();selection.addRange(revealed);
+});
